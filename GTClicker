@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Monster Realm: Curse of the Clicker - Ultimate</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel&display=swap');
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    overflow: hidden;
+    background: #0a0a0a;
+    font-family: 'Cinzel', serif;
+    color: #ddd;
+  }
+  #background-canvas {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: -2;
+    background: radial-gradient(circle at center, #111111 0%, #000000 80%);
+  }
+  #particle-canvas {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: -1;
+  }
+  #title-screen, #game-screen, #skill-tree {
+    position: relative;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px;
+    background: rgba(15,15,15,0.85);
+    border-radius: 16px;
+    box-shadow: 0 0 15px #330000;
+  }
+  #title-screen {
+    margin-top: 60px;
+    text-align: center;
+  }
+  #game-screen {
+    display: none;
+    text-align: center;
+  }
+  #skill-tree {
+    display: none;
+    color: #ffddaa;
+  }
+  h1, h2 {
+    margin: 0 0 10px 0;
+    letter-spacing: 3px;
+  }
+  button {
+    background: #660000;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 18px;
+    margin: 10px 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  button:disabled {
+    background: #333;
+    color: #888;
+    cursor: not-allowed;
+  }
+  button:hover:not(:disabled) {
+    background: #990000;
+  }
+  #monster {
+    width: 180px;
+    cursor: pointer;
+    margin: 20px auto 5px;
+    display: block;
+    filter: drop-shadow(0 0 6px crimson);
+  }
+  #health-bar {
+    width: 300px;
+    height: 28px;
+    background: #222;
+    margin: 12px auto 20px;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: inset 0 0 5px #900;
+  }
+  #health-fill {
+    height: 100%;
+    background: crimson;
+    width: 100%;
+    transition: width 0.3s ease;
+  }
+  #monster-class {
+    font-size: 20px;
+    margin: 0 0 12px;
+    color: #ff8000;
+    text-shadow: 0 0 10px #ff4000;
+  }
+  .stats {
+    font-size: 18px;
+    margin: 6px 0;
+    text-shadow: 0 0 3px #900;
+  }
+  #upgrade-buttons button {
+    width: 80%;
+    margin: 8px auto;
+    display: block;
+  }
+  #mute-btn, #reset-btn, #skill-tree-btn, #power-btn {
+    position: fixed;
+    top: 10px;
+    padding: 10px;
+    border-radius: 50%;
+    font-size: 18px;
+    user-select: none;
+    background: #440000;
+    color: white;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 0 8px #880000;
+    transition: background 0.3s;
+  }
+  #mute-btn:hover, #reset-btn:hover, #skill-tree-btn:hover, #power-btn:hover {
+    background: #880000;
+  }
+  #mute-btn { right: 10px; }
+  #reset-btn { left: 10px; }
+  #skill-tree-btn { right: 60px; }
+  #power-btn {
+    left: 60px;
+    font-weight: bold;
+    font-size: 20px;
+    box-shadow: 0 0 12px #ff6600;
+  }
+  #miss-text {
+    position: fixed;
+    color: #ff5555;
+    font-weight: bold;
+    font-size: 26px;
+    pointer-events: none;
+    user-select: none;
+    text-shadow: 0 0 5px #ff2222;
+    animation: floatUp 1s forwards;
+    z-index: 1000;
+  }
+  @keyframes floatUp {
+    0% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-40px); }
+  }
+  #skill-tree h3 {
+    margin-top: 12px;
+  }
+  .skill {
+    background: #330000;
+    border-radius: 12px;
+    margin: 12px 0;
+    padding: 10px;
+    cursor: pointer;
+    box-shadow: 0 0 8px #660000;
+    user-select: none;
+    transition: background 0.3s;
+  }
+  .skill.locked {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  .skill.unlocked {
+    background: #aa2200;
+    box-shadow: 0 0 12px #ff4400;
+  }
+  .skill.cooldown {
+    background: #551100;
+    cursor: default;
+    box-shadow: 0 0 6px #bb3300 inset;
+  }
+  .skill-name {
+    font-weight: bold;
+    font-size: 20px;
+  }
+  .skill-desc {
+    font-style: italic;
+    margin-top: 4px;
+    font-size: 14px;
+    color: #ffbb88;
+  }
+  #skill-points {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Background Canvases -->
+<canvas id="background-canvas"></canvas>
+<canvas id="particle-canvas"></canvas>
+
+<!-- Title Screen -->
+<div id="title-screen">
+  <h1>🧛 Monster Realm</h1>
+  <p><em>“In a land torn by shadows, monsters rise endlessly.<br>Only your cursed touch can destroy them… or doom you further.”</em></p>
+  <button id="start-btn">Begin the Curse</button>
+</div>
+
+<!-- Game Screen -->
+<div id="game-screen">
+  <button id="mute-btn" title="Mute/Unmute Sound">🔊</button>
+  <button id="reset-btn" title="Reset Game">♻️</button>
+  <button id="skill-tree-btn" title="Open Skill Tree">📜</button>
+  <button id="power-btn" title="Activate Special Power" disabled>🔥 Power</button>
+
+  <h2 id="level">Level: 1</h2>
+  <div style="position:relative; display:inline-block;">
+    <img id="monster" src="" alt="Monster" />
+    <div id="miss-text" style="display:none;">Miss!</div>
+  </div>
+  <div id="monster-class"></div>
+  <div id="health-bar"><div id="health-fill"></div></div>
+
+  <div class="stats" id="coins">Souls Collected: 0</div>
+  <div class="stats" id="upgrade">Power: 10 | Multiplier: 1x | Auto: 0 | Crit: 0%</div>
+
+  <div id="upgrade-buttons">
+    <button id="buy-damage">⚡ Power Surge (30)</button>
+    <button id="buy-multiplier">💰 Soul Doubler (50)</button>
+    <button id="buy-auto">🤖 Auto Ritual (100)</button>
+    <button id="buy-crit">🩸 Critical Curse (80)</button>
+  </div>
+</div>
+
+<!-- Skill Tree Screen -->
+<div id="skill-tree">
+  <h2>Skill Tree</h2>
+  <div id="skill-points">Skill Points: 0</div>
+  <div class="skill locked" data-id="shadowStrike">
+    <div class="skill-name">Shadow Strike</div>
+    <div class="skill-desc">+10% crit chance</div>
+  </div>
+  <div class="skill locked" data-id="curseWeakness">
+    <div class="skill-name">Curse of Weakness</div>
+    <div class="skill-desc">Monsters take 10% more damage</div>
+  </div>
+  <div class="skill locked" data-id="darkPact">
+    <div class="skill-name">Dark Pact</div>
+    <div class="skill-desc">Sacrifice 50 souls for 30s x3 damage</div>
+  </div>
+  <button id="close-skill-tree">Close Skill Tree</button>
+</div>
+
+<!-- Audio -->
+<audio id="click-sfx" src="https://cdn.pixabay.com/download/audio/2023/03/08/audio_69aa962e89.mp3?filename=dark-hit-145295.mp3"></audio>
+<audio id="bg-music" loop autoplay src="https://cdn.pixabay.com/download/audio/2022/12/02/audio_f3240d7ab5.mp3?filename=dark-piano-melody-127006.mp3"></audio>
+<audio id="power-sfx" src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_165c3c4d0e.mp3?filename=magic-spell-49377.mp3"></audio>
+
+<script>
+(() => {
+  // Setup canvases for background and particles
+  const bgCanvas = document.getElementById('background-canvas');
+  const pCanvas = document.getElementById('particle-canvas');
+  const bgCtx = bgCanvas.getContext('2d');
+  const pCtx = pCanvas.getContext('2d');
+  let width, height;
+
+  function resize() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    bgCanvas.width = width;
+    bgCanvas.height = height;
+    pCanvas.width = width;
+    pCanvas.height = height;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Background animation - swirling shadows
+  let angle = 0;
+  function drawBackground() {
+    bgCtx.clearRect(0, 0, width, height);
+    const gradient = bgCtx.createRadialGradient(width/2, height/2, 0, width/2, height/2, width/1.5);
+    gradient.addColorStop(0, 'rgba(40,0,0,0.3)');
+    gradient.addColorStop(0.5, 'rgba(10,0,0,0.15)');
+    gradient.addColorStop(1, '#000000');
+    bgCtx.fillStyle = gradient;
+    bgCtx.fillRect(0, 0, width, height);
+
+    // Draw swirling red arcs
+    for(let i=0; i<5; i++) {
+      bgCtx.strokeStyle = `rgba(255, 50, 50, 0.07)`;
+      bgCtx.lineWidth = 30;
+      bgCtx.beginPath();
+      let radius = (width/3) + 30*i + 20 * Math.sin(angle + i);
+      bgCtx.arc(width/2, height/2, radius, angle + i, angle + Math.PI/2 + i);
+      bgCtx.stroke();
+    }
+    angle += 0.002;
+  }
+
+  // Particles - glowing embers floating up
+  const particles = [];
+  class Particle {
+    constructor() {
+      this.x = Math.random()*width;
+      this.y = height + 20 + Math.random()*50;
+      this.size = 2 + Math.random()*3;
+      this.speedY = 0.3 + Math.random()*0.6;
+      this.alpha = 0;
+      this.alphaSpeed = 0.01 + Math.random()*0.02;
+    }
+    update() {
+      this.y -= this.speedY;
+      if(this.alpha < 1) this.alpha += this.alphaSpeed;
+      if(this.y < -10) {
+        this.x = Math.random()*width;
+        this.y = height + 20 + Math.random()*50;
+        this.alpha = 0;
+      }
+    }
+    draw() {
+      pCtx.beginPath();
+      pCtx.fillStyle = `rgba(255,140,0,${this.alpha})`;
+      pCtx.shadowColor = `rgba(255,140,0,${this.alpha})`;
+      pCtx.shadowBlur = 10;
+      pCtx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+      pCtx.fill();
+    }
+  }
+  for(let i=0; i<60; i++) particles.push(new Particle());
+
+  function animate() {
+    drawBackground();
+    pCtx.clearRect(0,0,width,height);
+    particles.forEach(p => {
+      p.update();
+      p.draw();
+    });
+    requestAnimationFrame(animate);
+  }
+  animate();
+
+  // Game variables & elements
+  let coins = +localStorage.getItem("coins") || 0;
+  let damage = +localStorage.getItem("damage") || 10;
+  let multiplier = +localStorage.getItem("multiplier") || 1;
+  let autoClickers = +localStorage.getItem("autoClickers") || 0;
+  let critChance = +localStorage.getItem("critChance") || 0;
+  let level = +localStorage.getItem("level") || 1;
+
+  // Skill system variables
+  let skillPoints = +localStorage.getItem("skillPoints") || 0;
+  const skills = {
+    shadowStrike: {
+      name: "Shadow Strike",
+      desc: "+10% crit chance",
+      unlocked: localStorage.getItem("skill-shadowStrike") === "true",
+      cooldown: 0
+    },
+    curseWeakness: {
+      name: "Curse of Weakness",
+      desc: "Monsters take 10% more damage",
+      unlocked: localStorage.getItem("skill-curseWeakness") === "true",
+      cooldown: 0
+    },
+    darkPact: {
+      name: "Dark Pact",
+      desc: "Sacrifice 50 souls for 30s x3 damage",
+      unlocked: localStorage.getItem("skill-darkPact") === "true",
+      cooldown: 0,
+      active: false,
+      durationLeft: 0
+    }
+  };
+
+  // DOM elements
+  const titleScreen = document.getElementById("title-screen");
+  const gameScreen = document.getElementById("game-screen");
+  const skillTreeScreen = document.getElementById("skill-tree");
+
+  const monsterImg = document.getElementById("monster");
+  const healthFill = document.getElementById("health-fill");
+  const coinsDisplay = document.getElementById("coins");
+  const upgradeDisplay = document.getElementById("upgrade");
+  const levelDisplay = document.getElementById("level");
+  const monsterClassDisplay = document.getElementById("monster-class");
+  const missText = document.getElementById("miss-text");
+
+  const muteBtn = document.getElementById("mute-btn");
+  const resetBtn = document.getElementById("reset-btn");
+  const skillTreeBtn = document.getElementById("skill-tree-btn");
+  const powerBtn = document.getElementById("power-btn");
+
+  const clickSFX = document.getElementById("click-sfx");
+  const bgMusic = document.getElementById("bg-music");
+  const powerSFX = document.getElementById("power-sfx");
+
+  // Monster data
+  const monsters = [
+    {img:"https://i.imgur.com/ERs9HPm.png", name:"Ghoul"},
+    {img:"https://i.imgur.com/YoMgQEX.png", name:"Wraith"},
+    {img:"https://i.imgur.com/kcQz5Gi.png", name:"Hellhound"},
+    {img:"https://i.imgur.com/XJG6Awg.png", name:"Banshee"},
+    {img:"https://i.imgur.com/LO1r0D1.png", name:"Imp"},
+    {img:"https://i.imgur.com/SOg3n6k.png", name:"Shade"}
+  ];
+
+  const monsterClasses = [
+    {
+      id: "Undead",
+      icon: "👻",
+      description: "Heals 2 HP every 3 seconds unless you crit-hit it",
+      onTick: (monster) => {
+        if (!monster.critLastHit) {
+          monster.health = Math.min(monster.health + 2, monster.maxHealth);
+        }
+      }
+    },
+    {
+      id: "Beast",
+      icon: "🐺",
+      description: "Takes half damage unless Power Surge upgrade is active",
+      onDamage: (damage, monster) => {
+        return damage > 10 ? damage : damage * 0.5; // power surge if damage>10 else half
+      }
+    },
+    {
+      id: "Demon",
+      icon: "🔥",
+      description: "Has +50% HP but drops +50% more coins",
+      modifyHealth: (baseHealth) => baseHealth * 1.5,
+      coinMultiplier: 1.5
+    },
+    {
+      id: "Specter",
+      icon: "🌫️",
+      description: "20% chance to dodge your click",
+      onAttackAttempt: () => Math.random() < 0.2
+    },
+    {
+      id: "Titan",
+      icon: "💀",
+      description: "Boss class with massive health and big coin rewards",
+      modifyHealth: (baseHealth) => baseHealth * 3,
+      coinMultiplier: 3
+    }
+  ];
+
+  // Game state
+  let currentMonster = {
+    class: null,
+    health: 0,
+    maxHealth: 0,
+    critLastHit: false
+  };
+  let muted = false;
+  let darkPactActive = false;
+  let darkPactDuration = 0;
+
+  // Save function
+  function save() {
+    localStorage.setItem
